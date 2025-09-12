@@ -24,7 +24,8 @@
               "value2": "image"
             }
           ]
-        }
+        },
+        "options": {}
       },
       "id": "2",
       "name": "Switch Doc Type",
@@ -37,7 +38,8 @@
         "authentication": "oAuth2",
         "binaryData": true,
         "fileName": "={{$json[\"From\"] + \"_\" + $json[\"MessageSid\"]}}.jpg",
-        "parents": ["YOUR_GOOGLE_DRIVE_FOLDER_ID"]
+        "parents": ["YOUR_GOOGLE_DRIVE_FOLDER_ID"],
+        "options": {}
       },
       "id": "3",
       "name": "Google Drive Upload",
@@ -48,7 +50,8 @@
     {
       "parameters": {
         "authentication": "oAuth2",
-        "fileId": "={{$node[\"Google Drive Upload\"].json[\"id\"]}}"
+        "fileId": "={{$node[\"Google Drive Upload\"].json[\"id\"]}}",
+        "options": {}
       },
       "id": "4",
       "name": "Google Vision OCR",
@@ -58,7 +61,8 @@
     },
     {
       "parameters": {
-        "functionCode": "const text = $json.fullTextAnnotation ? $json.fullTextAnnotation.text : '';\n\nlet litres = null;\nlet amount = null;\nlet ticket = null;\n\nconst litresMatch = text.match(/(\\d+(\\.\\d+)?)\\s?(L|litres?)/i);\nif (litresMatch) litres = litresMatch[1];\n\nconst amountMatch = text.match(/R\\s?(\\d+[.,]?\\d{0,2})/);\nif (amountMatch) amount = amountMatch[1];\n\nconst ticketMatch = text.match(/(Ticket|Slip)\\s?(\\d+)/i);\nif (ticketMatch) ticket = ticketMatch[2];\n\nreturn [{\n  text,\n  litres,\n  amount,\n  ticket,\n  fileUrl: $node[\"Google Drive Upload\"].json.webViewLink\n}];"
+        "functionCode": "const text = $json.fullTextAnnotation ? $json.fullTextAnnotation.text : '';\n\nlet litres = null;\nlet amount = null;\nlet ticket = null;\n\nconst litresMatch = text.match(/(\\d+(\\.\\d+)?)\\s?(L|litres?)/i);\nif (litresMatch) litres = litresMatch[1];\n\nconst amountMatch = text.match(/R\\s?(\\d+[.,]?\\d{0,2})/);\nif (amountMatch) amount = amountMatch[1];\n\nconst ticketMatch = text.match(/(Ticket|Slip)\\s?(\\d+)/i);\nif (ticketMatch) ticket = ticketMatch[2];\n\nreturn [{\n  text,\n  litres,\n  amount,\n  ticket,\n  fileUrl: $node[\"Google Drive Upload\"].json.webViewLink\n}];",
+        "options": {}
       },
       "id": "5",
       "name": "Parse OCR Text",
@@ -70,10 +74,13 @@
       "parameters": {
         "authentication": "oAuth2",
         "sheetId": "YOUR_SHEET_ID",
-        "range": "Docs!A:D",
-        "options": {},
-        "valueInputMode": "RAW",
-        "fields": "Date,Truck,DocType,Litres,Amount,Ticket,FileURL",
+        "range": "Docs!A:G",
+        "options": {
+          "valueInputMode": "RAW"
+        },
+        "fields": {
+          "values": "Date,Truck,DocType,Litres,Amount,Ticket,FileURL"
+        },
         "values": "={{ [ [ new Date().toISOString(), $json.From, 'Fuel Slip', $json.litres, $json.amount, $json.ticket, $json.fileUrl ] ] }}"
       },
       "id": "6",
