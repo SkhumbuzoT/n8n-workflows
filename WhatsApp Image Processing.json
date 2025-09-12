@@ -1,0 +1,184 @@
+{
+  "name": "WhatsApp Receipt Processor to Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "download",
+        "mediaId": "={{ $json.mediaId }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [-400, 0],
+      "id": "whatsapp-download",
+      "name": "Download WhatsApp Media",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "your-whatsapp-credential-id",
+          "name": "WhatsApp Cloud API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "name": "={{ $json.message.from }}_{{ $now.format('YYYY-MM-DD_HH-mm-ss') }}.jpg",
+        "parentId": "your-google-drive-folder-id",
+        "binaryData": "={{ $json.data }}"
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3.3,
+      "position": [-200, 0],
+      "id": "google-drive-upload",
+      "name": "Save to Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "your-google-drive-credential-id",
+          "name": "Google Drive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "documentTextDetection",
+        "imageSource": "binaryData",
+        "binaryData": "={{ $json.data }}"
+      },
+      "type": "n8n-nodes-base.googleCloudVision",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "id": "google-vision-ocr",
+      "name": "OCR with Google Vision",
+      "credentials": {
+        "googleCloudVisionOAuth2Api": {
+          "id": "your-google-vision-credential-id",
+          "name": "Google Cloud Vision"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const fullText = items[0].json.text;\n\n// Enhanced parsing with multiple pattern matching\nconst parseValue = (text, patterns) => {\n  for (const pattern of patterns) {\n    const match = text.match(pattern);\n    if (match && match[1]) return match[1].trim();\n  }\n  return 'Not Found';\n};\n\nconst amountPatterns = [\n  /Amount[\\s:]*[\\$€£]?\\s*(\\d+(?:\\.\\d{2})?)/i,\n  /Total[\\s:]*[\\$€£]?\\s*(\\d+(?:\\.\\d{2})?)/i,\n  /[\\$€£](\\d+(?:\\.\\d{2})?)/\n];\n\nconst litresPatterns = [\n  /Litres[\\s:]*\\s*(\\d+(?:\\.\\d+)?)/i,\n  /Liters[\\s:]*\\s*(\\d+(?:\\.\\d+)?)/i,\n  /Volume[\\s:]*\\s*(\\d+(?:\\.\\d+)?)/i,\n  /(\\d+(?:\\.\\d+)?)\\s*[Ll]\\)?\n];\n\nconst ticketPatterns = [\n  /Ticket[\\s#:]*\\s*(\\d+)/i,\n  /Receipt[\\s#:]*\\s*(\\d+)/i,\n  /Trans[\\s#:]*\\s*(\\d+)/i,\n  /#\\s*(\\d+)/\n];\n\nreturn [{\n  json: {\n    litres: parseValue(fullText, litresPatterns),\n    amount: parseValue(fullText, amountPatterns),\n    ticket_number: parseValue(fullText, ticketPatterns),\n    original_text: fullText,\n    file_link: $('google-drive-upload').first().json.webViewLink\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2.1,
+      "position": [200, 0],
+      "id": "parse-data",
+      "name": "Parse Data from Text"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "your-google-sheet-id",
+        "sheetName": "gid=0",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Litres": "={{ $json.litres }}",
+            "Amount": "={{ $json.amount }}",
+            "Ticket Number": "={{ $json.ticket_number }}",
+            "File Link": "={{ $json.file_link }}",
+            "Timestamp": "={{ $now }}",
+            "Original Text": "={{ $json.original_text }}"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [400, 0],
+      "id": "append-to-sheet",
+      "name": "Append to Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "your-google-sheets-credential-id",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "trigger",
+        "trigger": "mediaMessage"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [-600, 0],
+      "id": "whatsapp-trigger",
+      "name": "WhatsApp Incoming Media Trigger",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "your-whatsapp-credential-id",
+          "name": "WhatsApp Cloud API"
+        }
+      },
+      "webhookId": "whatsapp-media-trigger"
+    }
+  ],
+  "connections": {
+    "whatsapp-trigger": {
+      "main": [
+        [
+          {
+            "node": "whatsapp-download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "whatsapp-download": {
+      "main": [
+        [
+          {
+            "node": "google-drive-upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "google-drive-upload": {
+      "main": [
+        [
+          {
+            "node": "google-vision-ocr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "google-vision-ocr": {
+      "main": [
+        [
+          {
+            "node": "parse-data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parse-data": {
+      "main": [
+        [
+          {
+            "node": "append-to-sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "active": true
+}
