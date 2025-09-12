@@ -11,10 +11,7 @@
       "name": "WhatsApp Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [
-        250,
-        300
-      ],
+      "position": [250, 300],
       "webhookId": "whatsapp-docs"
     },
     {
@@ -36,16 +33,7 @@
                     "operation": "equal"
                   }
                 ]
-              },
-              "output": [
-                [
-                  {
-                    "node": "Google Drive Upload",
-                    "type": "main",
-                    "index": 0
-                  }
-                ]
-              ]
+              }
             }
           ]
         },
@@ -55,10 +43,7 @@
       "name": "Switch Doc Type",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 4,
-      "position": [
-        500,
-        300
-      ]
+      "position": [500, 300]
     },
     {
       "parameters": {
@@ -73,10 +58,7 @@
       "name": "Google Drive Upload",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [
-        750,
-        200
-      ]
+      "position": [750, 200]
     },
     {
       "parameters": {
@@ -86,13 +68,10 @@
         "options": {}
       },
       "id": "4",
-      "name": "Google Vision OCR",
+      "name": "Google Cloud Vision OCR",
       "type": "n8n-nodes-base.googleCloudVision",
       "typeVersion": 1,
-      "position": [
-        950,
-        200
-      ]
+      "position": [950, 200]
     },
     {
       "parameters": {
@@ -103,10 +82,7 @@
       "name": "Parse OCR Text",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [
-        1150,
-        200
-      ]
+      "position": [1150, 200]
     },
     {
       "parameters": {
@@ -154,10 +130,7 @@
       "name": "Google Sheets Append",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 3,
-      "position": [
-        1350,
-        200
-      ]
+      "position": [1350, 200]
     }
   ],
   "connections": {
@@ -187,14 +160,14 @@
       "main": [
         [
           {
-            "node": "Google Vision OCR",
+            "node": "Google Cloud Vision OCR",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Vision OCR": {
+    "Google Cloud Vision OCR": {
       "main": [
         [
           {
