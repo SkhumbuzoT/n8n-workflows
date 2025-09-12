@@ -62,20 +62,58 @@
     },
     {
       "parameters": {
-        "operation": "documentText",
-        "resource": "text",
-        "fileId": "={{$node[\"Google Drive Upload\"].json[\"id\"]}}",
-        "options": {}
+        "url": "https://vision.googleapis.com/v1/images:annotate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "bearerToken",
+        "requestMethod": "POST",
+        "headers": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "body": {
+          "contentType": "json",
+          "type": "json",
+          "json": {
+            "requests": [
+              {
+                "image": {
+                  "source": {
+                    "imageUri": "={{$node['Google Drive Upload'].json['webContentLink']}}"
+                  }
+                },
+                "features": [
+                  {
+                    "type": "DOCUMENT_TEXT_DETECTION",
+                    "maxResults": 1
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "options": {
+          "fullResponse": true
+        }
       },
       "id": "4",
-      "name": "Google Cloud Vision OCR",
-      "type": "n8n-nodes-base.googleCloudVision",
-      "typeVersion": 1,
-      "position": [950, 200]
+      "name": "Google Vision API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 11,
+      "position": [950, 200],
+      "credentials": {
+        "httpGenericAuth": {
+          "id": "YOUR_GOOGLE_API_CREDENTIALS_ID",
+          "name": "Google Vision API Key"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const text = $json.fullTextAnnotation ? $json.fullTextAnnotation.text : '';\n\nlet litres = null;\nlet amount = null;\nlet ticket = null;\n\nconst litresMatch = text.match(/(\\d+(\\.\\d+)?)\\s?(L|litres?)/i);\nif (litresMatch) litres = litresMatch[1];\n\nconst amountMatch = text.match(/R\\s?(\\d+[.,]?\\d{0,2})/);\nif (amountMatch) amount = amountMatch[1];\n\nconst ticketMatch = text.match(/(Ticket|Slip)\\s?(\\d+)/i);\nif (ticketMatch) ticket = ticketMatch[2];\n\nreturn [{\n  text,\n  litres,\n  amount,\n  ticket,\n  fileUrl: $node[\"Google Drive Upload\"].json.webViewLink\n}];",
+        "jsCode": "const visionResponse = $json.body;\nconst text = visionResponse.responses && visionResponse.responses[0] && visionResponse.responses[0].fullTextAnnotation \n  ? visionResponse.responses[0].fullTextAnnotation.text \n  : '';\n\nlet litres = null;\nlet amount = null;\nlet ticket = null;\n\nconst litresMatch = text.match(/(\\d+(\\.\\d+)?)\\s?(L|litres?)/i);\nif (litresMatch) litres = litresMatch[1];\n\nconst amountMatch = text.match(/R\\s?(\\d+[.,]?\\d{0,2})/);\nif (amountMatch) amount = amountMatch[1];\n\nconst ticketMatch = text.match(/(Ticket|Slip)\\s?(\\d+)/i);\nif (ticketMatch) ticket = ticketMatch[2];\n\nreturn [{\n  text,\n  litres,\n  amount,\n  ticket,\n  fileUrl: $node[\"Google Drive Upload\"].json.webViewLink\n}];",
         "options": {}
       },
       "id": "5",
@@ -160,14 +198,14 @@
       "main": [
         [
           {
-            "node": "Google Cloud Vision OCR",
+            "node": "Google Vision API Call",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Cloud Vision OCR": {
+    "Google Vision API Call": {
       "main": [
         [
           {
