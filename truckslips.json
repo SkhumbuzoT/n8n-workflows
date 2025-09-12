@@ -1,0 +1,143 @@
+{
+  "name": "Trucking Docs Capture & OCR",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-docs",
+        "options": {}
+      },
+      "id": "1",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "whatsapp-docs"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "value1": "={{$json[\"Body\"] || $json[\"MediaUrl0\"] ? \"image\" : \"text\"}}",
+              "operation": "equal",
+              "value2": "image"
+            }
+          ]
+        }
+      },
+      "id": "2",
+      "name": "Switch Doc Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "binaryData": true,
+        "fileName": "={{$json[\"From\"] + \"_\" + $json[\"MessageSid\"]}}.jpg",
+        "parents": ["YOUR_GOOGLE_DRIVE_FOLDER_ID"]
+      },
+      "id": "3",
+      "name": "Google Drive Upload",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 2,
+      "position": [750, 200]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "fileId": "={{$node[\"Google Drive Upload\"].json[\"id\"]}}"
+      },
+      "id": "4",
+      "name": "Google Vision OCR",
+      "type": "n8n-nodes-base.googleCloudVision",
+      "typeVersion": 1,
+      "position": [950, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "const text = $json.fullTextAnnotation ? $json.fullTextAnnotation.text : '';\n\nlet litres = null;\nlet amount = null;\nlet ticket = null;\n\nconst litresMatch = text.match(/(\\d+(\\.\\d+)?)\\s?(L|litres?)/i);\nif (litresMatch) litres = litresMatch[1];\n\nconst amountMatch = text.match(/R\\s?(\\d+[.,]?\\d{0,2})/);\nif (amountMatch) amount = amountMatch[1];\n\nconst ticketMatch = text.match(/(Ticket|Slip)\\s?(\\d+)/i);\nif (ticketMatch) ticket = ticketMatch[2];\n\nreturn [{\n  text,\n  litres,\n  amount,\n  ticket,\n  fileUrl: $node[\"Google Drive Upload\"].json.webViewLink\n}];"
+      },
+      "id": "5",
+      "name": "Parse OCR Text",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1150, 200]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "sheetId": "YOUR_SHEET_ID",
+        "range": "Docs!A:D",
+        "options": {},
+        "valueInputMode": "RAW",
+        "fields": "Date,Truck,DocType,Litres,Amount,Ticket,FileURL",
+        "values": "={{ [ [ new Date().toISOString(), $json.From, 'Fuel Slip', $json.litres, $json.amount, $json.ticket, $json.fileUrl ] ] }}"
+      },
+      "id": "6",
+      "name": "Google Sheets Append",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [1350, 200]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Switch Doc Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Doc Type": {
+      "main": [
+        [
+          {
+            "node": "Google Drive Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive Upload": {
+      "main": [
+        [
+          {
+            "node": "Google Vision OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Vision OCR": {
+      "main": [
+        [
+          {
+            "node": "Parse OCR Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse OCR Text": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets Append",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
