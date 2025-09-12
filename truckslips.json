@@ -11,17 +11,41 @@
       "name": "WhatsApp Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 300],
+      "position": [
+        250,
+        300
+      ],
       "webhookId": "whatsapp-docs"
     },
     {
       "parameters": {
         "rules": {
-          "values": [
+          "rules": [
             {
-              "value1": "={{$json[\"Body\"] || $json[\"MediaUrl0\"] ? \"image\" : \"text\"}}",
-              "operation": "equal",
-              "value2": "image"
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "={{$json[\"Body\"] || $json[\"MediaUrl0\"] ? \"image\" : \"text\"}}",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "value1",
+                    "value1": "={{$json[\"Body\"] || $json[\"MediaUrl0\"] ? \"image\" : \"text\"}}",
+                    "value2": "image",
+                    "operation": "equal"
+                  }
+                ]
+              },
+              "output": [
+                [
+                  {
+                    "node": "Google Drive Upload",
+                    "type": "main",
+                    "index": 0
+                  }
+                ]
+              ]
             }
           ]
         },
@@ -30,26 +54,34 @@
       "id": "2",
       "name": "Switch Doc Type",
       "type": "n8n-nodes-base.switch",
-      "typeVersion": 1,
-      "position": [500, 300]
+      "typeVersion": 4,
+      "position": [
+        500,
+        300
+      ]
     },
     {
       "parameters": {
-        "authentication": "oAuth2",
+        "operation": "upload",
+        "resource": "file",
         "binaryData": true,
         "fileName": "={{$json[\"From\"] + \"_\" + $json[\"MessageSid\"]}}.jpg",
-        "parents": ["YOUR_GOOGLE_DRIVE_FOLDER_ID"],
+        "parents": "YOUR_GOOGLE_DRIVE_FOLDER_ID",
         "options": {}
       },
       "id": "3",
       "name": "Google Drive Upload",
       "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 2,
-      "position": [750, 200]
+      "typeVersion": 3,
+      "position": [
+        750,
+        200
+      ]
     },
     {
       "parameters": {
-        "authentication": "oAuth2",
+        "operation": "documentText",
+        "resource": "text",
         "fileId": "={{$node[\"Google Drive Upload\"].json[\"id\"]}}",
         "options": {}
       },
@@ -57,37 +89,75 @@
       "name": "Google Vision OCR",
       "type": "n8n-nodes-base.googleCloudVision",
       "typeVersion": 1,
-      "position": [950, 200]
+      "position": [
+        950,
+        200
+      ]
     },
     {
       "parameters": {
-        "functionCode": "const text = $json.fullTextAnnotation ? $json.fullTextAnnotation.text : '';\n\nlet litres = null;\nlet amount = null;\nlet ticket = null;\n\nconst litresMatch = text.match(/(\\d+(\\.\\d+)?)\\s?(L|litres?)/i);\nif (litresMatch) litres = litresMatch[1];\n\nconst amountMatch = text.match(/R\\s?(\\d+[.,]?\\d{0,2})/);\nif (amountMatch) amount = amountMatch[1];\n\nconst ticketMatch = text.match(/(Ticket|Slip)\\s?(\\d+)/i);\nif (ticketMatch) ticket = ticketMatch[2];\n\nreturn [{\n  text,\n  litres,\n  amount,\n  ticket,\n  fileUrl: $node[\"Google Drive Upload\"].json.webViewLink\n}];",
+        "jsCode": "const text = $json.fullTextAnnotation ? $json.fullTextAnnotation.text : '';\n\nlet litres = null;\nlet amount = null;\nlet ticket = null;\n\nconst litresMatch = text.match(/(\\d+(\\.\\d+)?)\\s?(L|litres?)/i);\nif (litresMatch) litres = litresMatch[1];\n\nconst amountMatch = text.match(/R\\s?(\\d+[.,]?\\d{0,2})/);\nif (amountMatch) amount = amountMatch[1];\n\nconst ticketMatch = text.match(/(Ticket|Slip)\\s?(\\d+)/i);\nif (ticketMatch) ticket = ticketMatch[2];\n\nreturn [{\n  text,\n  litres,\n  amount,\n  ticket,\n  fileUrl: $node[\"Google Drive Upload\"].json.webViewLink\n}];",
         "options": {}
       },
       "id": "5",
       "name": "Parse OCR Text",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [1150, 200]
+      "position": [
+        1150,
+        200
+      ]
     },
     {
       "parameters": {
-        "authentication": "oAuth2",
+        "operation": "append",
+        "resource": "sheet",
         "sheetId": "YOUR_SHEET_ID",
         "range": "Docs!A:G",
+        "columnsUi": {
+          "columnValues": [
+            {
+              "column": "Date",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "column": "Truck",
+              "value": "={{ $json.From }}"
+            },
+            {
+              "column": "DocType",
+              "value": "Fuel Slip"
+            },
+            {
+              "column": "Litres",
+              "value": "={{ $json.litres }}"
+            },
+            {
+              "column": "Amount",
+              "value": "={{ $json.amount }}"
+            },
+            {
+              "column": "Ticket",
+              "value": "={{ $json.ticket }}"
+            },
+            {
+              "column": "FileURL",
+              "value": "={{ $json.fileUrl }}"
+            }
+          ]
+        },
         "options": {
           "valueInputMode": "RAW"
-        },
-        "fields": {
-          "values": "Date,Truck,DocType,Litres,Amount,Ticket,FileURL"
-        },
-        "values": "={{ [ [ new Date().toISOString(), $json.From, 'Fuel Slip', $json.litres, $json.amount, $json.ticket, $json.fileUrl ] ] }}"
+        }
       },
       "id": "6",
       "name": "Google Sheets Append",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 3,
-      "position": [1350, 200]
+      "position": [
+        1350,
+        200
+      ]
     }
   ],
   "connections": {
